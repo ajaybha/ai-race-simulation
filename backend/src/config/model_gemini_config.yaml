@@ -1,0 +1,14 @@
+# use GeminiAI with key
+provider: autogen_ext.models.openai.OpenAIChatCompletionClient
+config:
+  model: gemini-1.5-flash-8b
+  api_key: ${GEMINI_API_KEY}
+  model_info:
+    vision: true
+    function_calling: true
+    json_output: true
+    family: unknown
+    structured_output: true
+
+
+  

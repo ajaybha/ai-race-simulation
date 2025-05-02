@@ -1,0 +1,14 @@
+[project]
+name = "ai-race-simulation"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "autogen-agentchat>=0.5.5",
+    "autogen-ext[openai]>=0.5.5",
+    "dotenv>=0.9.9",
+    "fastapi>=0.115.12",
+    "pyyaml>=6.0.2",
+    "uvicorn[standard]>=0.34.2",
+]
