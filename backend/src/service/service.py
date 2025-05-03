@@ -15,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from autogen_agentchat.agents import AssistantAgent, UserProxyAgent
 from autogen_agentchat.base import TaskResult
 from autogen_agentchat.messages import TextMessage, UserInputRequestedEvent
+from autogen_agentchat.conditions import TextMentionTermination, ExternalTermination
 from autogen_agentchat.teams import RoundRobinGroupChat
 from autogen_core import CancellationToken
 from autogen_core.models import ChatCompletionClient
@@ -82,7 +83,7 @@ async def  chat(websocket: WebSocket):
                 stream = team.run_stream(task = request)
                 async for message in stream:
                     if isinstance(message, TaskResult):
-                        logger.info(f"Task result: {message.result}")
+                        logger.info(f"Task result: {message.model_dump()}")
                         # send the task result to the client
                         continue
                     await websocket.send_json(message.model_dump())
@@ -147,6 +148,8 @@ async def get_team(
         model_config = yaml.load(await file.read(), Loader=EnvVarLoader)
     logger.info(f"Model config: {model_config}")
     model_client = ChatCompletionClient.load_component(model_config)
+    # termination conditions.
+    text_termination = TextMentionTermination("TERMINATE")
     # Create the team.
     agent = AssistantAgent(
         name="assistant",
@@ -163,7 +166,7 @@ async def get_team(
         input_func=user_input_func,  # Use the user input function.
     )
     team = RoundRobinGroupChat(
-        [agent, yoda, user_proxy],
+        [agent, yoda, user_proxy],termination_condition=text_termination
     )
     # Load state from file.
     if not os.path.exists(state_path):
