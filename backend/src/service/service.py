@@ -20,9 +20,10 @@ from autogen_agentchat.teams import RoundRobinGroupChat
 from autogen_core import CancellationToken
 from autogen_core.models import ChatCompletionClient
 
-# utils
-#from utils import EnvVarLoader
+# repo
 from utils import EnvVarLoader
+from agents import get_agent
+from teams import get_team
 
 logger = logging.getLogger('uvicorn.info')
 app = FastAPI()
@@ -78,7 +79,7 @@ async def  chat(websocket: WebSocket):
 
             try: 
                 # get the team and respond to the message
-                team = await get_team(_user_input_func)
+                team = await get_team(_user_input_func, state_path)
                 history = await get_history()
                 stream = team.run_stream(task = request)
                 async for message in stream:
@@ -140,39 +141,4 @@ async def get_history() -> list[dict[str, Any]]:
     async with aiofiles.open(history_path, "r") as file:
         return json.loads(await file.read())
     
-async def get_team(
-    user_input_func: Callable[[str, Optional[CancellationToken]], Awaitable[str]],
-) -> RoundRobinGroupChat:
-    # Get model client from config.
-    async with aiofiles.open(model_config_path, "r") as file:
-        model_config = yaml.load(await file.read(), Loader=EnvVarLoader)
-    logger.info(f"Model config: {model_config}")
-    model_client = ChatCompletionClient.load_component(model_config)
-    # termination conditions.
-    text_termination = TextMentionTermination("TERMINATE")
-    # Create the team.
-    agent = AssistantAgent(
-        name="assistant",
-        model_client=model_client,
-        system_message="You are a helpful assistant.",
-    )
-    yoda = AssistantAgent(
-        name="yoda",
-        model_client=model_client,
-        system_message="Repeat the same message in the tone of Yoda.",
-    )
-    user_proxy = UserProxyAgent(
-        name="user",
-        input_func=user_input_func,  # Use the user input function.
-    )
-    team = RoundRobinGroupChat(
-        [agent, yoda, user_proxy],termination_condition=text_termination
-    )
-    # Load state from file.
-    if not os.path.exists(state_path):
-        return team
-    async with aiofiles.open(state_path, "r") as file:
-        state = json.loads(await file.read())
-    await team.load_state(state)
-    return team
 
